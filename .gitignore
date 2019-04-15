@@ -60,8 +60,10 @@ typings/
 # next.js build output
 .next
 
-# Distribution folder
-dist
+# Compiled code directories
+dist/
+compiled/
+out/
 
 # IDE-specific settings
 .vscode

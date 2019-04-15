@@ -28,9 +28,6 @@ function splitUrls(urlString: string) {
     .filter(url => /.*github.com\/.*\/.+$/.test(url))
     .map(addHttps);
 
-  console.log(users);
-  console.log(repos);
-
   return {
     users,
     repos,
@@ -65,7 +62,19 @@ const Home = () => {
       />
       <br />
       <br />
-      <Button variant="contained" color="primary">
+      <Button
+        color="primary"
+        variant="contained"
+        onClick={() =>
+          fetch('/start', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(urls),
+          })
+        }
+      >
         Analyze
       </Button>
       <br />
