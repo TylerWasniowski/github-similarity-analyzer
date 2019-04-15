@@ -1,0 +1,19 @@
+body {
+  text-align: center;
+}
+
+.page-title {
+  font-size: 35px !important;
+
+  margin: 5px 10px 15px 10px !important;
+  min-height: 25px;
+}
+
+.urls-list {
+  border-color: #00000029;
+  border-radius: 15px;
+  border-style: solid;
+
+  margin: 0 auto;
+  width: 700px;
+}

@@ -1,0 +1,33 @@
+{
+  "private": true,
+  "name": "github-similarity-analyzer-backend",
+  "license": "MIT",
+  "author": "Tyler Wasniowski <tylerwasniowski@gmail.com> (https://github.com/tylerwasniowski)",
+  "repository": "https://github.com/TylerWasniowski/github-similarity-analyzer/tree/master/packages/backend",
+  "version": "0.0.0",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "babel src --out-dir dist --copy-files --source-maps",
+    "clean": "rimraf dist",
+    "dev": "cross-env NODE_ENV=development node -r @babel/register src/app.js",
+    "prestart": "yarn run stop",
+    "start": "cross-env NODE_ENV=production forever start dist/app.js",
+    "stop": "forever stop dist/app.js; exit 0"
+  },
+  "dependencies": {
+    "chalk": "^2.4.1",
+    "debug": "~4.1.0",
+    "dotenv": "^6.0.0",
+    "express": "~4.16.4",
+    "express-session": "^1.15.6",
+    "forever": "^0.15.3",
+    "http-errors": "~1.7.1",
+    "http-status": "^1.2.0",
+    "moment": "^2.22.2",
+    "morgan": "~1.9.1",
+    "pretty-error": "^2.1.1"
+  },
+  "peerDependencies": {
+    "github-similarity-analyzer-frontend": "*"
+  }
+}

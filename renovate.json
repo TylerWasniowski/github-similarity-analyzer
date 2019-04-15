@@ -1,0 +1,21 @@
+{
+  "extends": ["config:base"],
+  "assignees": ["tylerwasniowski"],
+
+  "devDependencies": {
+    "rangeStrategy": "bump"
+  },
+
+  "rangeStrategy": "bump",
+
+  "packageRules": [
+    {
+      "paths": ["packages/frontend/**"],
+      "assignees": ["tylerwasniowski"]
+    },
+    {
+      "paths": ["packages/backend/**"],
+      "assignees": ["verawong789", "zjaved101", "lingling287", "hien010"]
+    }
+  ]
+}
