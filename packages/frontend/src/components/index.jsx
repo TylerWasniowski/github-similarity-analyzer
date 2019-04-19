@@ -98,7 +98,11 @@ const Home = () => {
         )}
         <List>
           {urls.repos.map(repo => (
-            <ListItem button component="a" href={repo}>
+            <ListItem
+              button
+              component="a"
+              href={`https://www.github.com/${repo}`}
+            >
               <ListItemText primary={repo} />
             </ListItem>
           ))}
