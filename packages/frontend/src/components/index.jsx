@@ -86,7 +86,11 @@ const Home = () => {
       >
         <List>
           {urls.users.map(user => (
-            <ListItem button component="a" href={user}>
+            <ListItem
+              button
+              component="a"
+              href={`https://www.github.com/${user}`}
+            >
               <ListItemText primary={user} />
             </ListItem>
           ))}
