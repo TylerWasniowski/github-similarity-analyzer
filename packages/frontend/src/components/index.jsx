@@ -12,21 +12,18 @@ import TextField from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
 import { Divider } from '@material-ui/core';
 
-function addHttps(url) {
-  return url.startsWith('http://') || url.startsWith('https://')
-    ? url
-    : `https://${url}`;
-}
+function splitSelected(selectedString: string) {
+  const userRegex = /^(.*github.com\/)?([^/\s.]+)\/?$/m;
+  const repoRegex = /^(.*github.com\/)?([^/\s.]+\/[^/\s.]+)$/m;
 
-function splitUrls(urlString: string) {
-  const urlPieces = urlString.split(';').map(url => url.trim());
+  const selectedPieces = selectedString.split(';').map(item => item.trim());
 
-  const users = urlPieces
-    .filter(url => /.*github.com\/[^/]*\/?$/.test(url))
-    .map(addHttps);
-  const repos = urlPieces
-    .filter(url => /.*github.com\/.*\/.+$/.test(url))
-    .map(addHttps);
+  const users = selectedPieces
+    .filter(item => userRegex.test(item))
+    .map(item => item.replace(userRegex, '$2'));
+  const repos = selectedPieces
+    .filter(item => repoRegex.test(item))
+    .map(item => item.replace(repoRegex, '$2'));
 
   return {
     users,
@@ -35,7 +32,7 @@ function splitUrls(urlString: string) {
 }
 
 const Home = () => {
-  const [urls, setUrls] = useState({
+  const [selected, setSelected] = useState({
     users: [],
     repos: [],
   });
@@ -58,7 +55,7 @@ const Home = () => {
         name="urls"
         margin="normal"
         variant="outlined"
-        onChange={event => setUrls(splitUrls(event.target.value))}
+        onChange={event => setSelected(splitSelected(event.target.value))}
       />
       <br />
       <br />
@@ -71,7 +68,7 @@ const Home = () => {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(urls),
+            body: JSON.stringify(selected),
           })
         }
       >
@@ -82,11 +79,12 @@ const Home = () => {
       <br />
       <div
         className="urls-list"
-        hidden={!(urls.users.length || urls.repos.length)}
+        hidden={!selected.users.length && !selected.repos.length}
       >
         <List>
-          {urls.users.map(user => (
+          {selected.users.map(user => (
             <ListItem
+              key={user}
               button
               component="a"
               href={`https://www.github.com/${user}`}
@@ -95,14 +93,15 @@ const Home = () => {
             </ListItem>
           ))}
         </List>
-        {urls.users.length && urls.repos.length ? (
+        {selected.users.length && selected.repos.length ? (
           <Divider />
         ) : (
           <React.Fragment />
         )}
         <List>
-          {urls.repos.map(repo => (
+          {selected.repos.map(repo => (
             <ListItem
+              key={repo}
               button
               component="a"
               href={`https://www.github.com/${repo}`}
