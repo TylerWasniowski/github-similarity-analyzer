@@ -1,12 +1,10 @@
+import javafx.util.Pair;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -76,7 +74,7 @@ public class Main {
 
 
         // Get files from repos
-        Map<String, List<String>> repoToFiles = new HashMap<>();
+        Map<String, List<Pair<String, Integer>>> repoToFiles = new HashMap<>();
         repos
             .parallelStream()
             .forEach((repo) -> repoToFiles.put(repo, getFiles(repo)));
@@ -107,12 +105,12 @@ public class Main {
         return repos;
     }
 
-    private static List<String> getFiles(String repo) {
+    private static List<Pair<String, Integer>> getFiles(String repo) {
         return getFilesRecurse(repo, "");
     }
 
-    private static List<String> getFilesRecurse(String repo, String path) {
-        List<String> files = new ArrayList<>();
+    private static List<Pair<String, Integer>> getFilesRecurse(String repo, String path) {
+        List<Pair<String, Integer>> files = new ArrayList<>();
 
         try {
             String modulesString = Helper.makeRequest("/repos/" + repo + "/contents" + path);
@@ -121,7 +119,7 @@ public class Main {
             for (Object moduleObject : filesArray) {
                 JSONObject moduleJson = (JSONObject) moduleObject;
                 if (moduleJson.get("type").equals("file")) {
-                    files.add((String) moduleJson.get("url"));
+                    files.add(new Pair<>((String) moduleJson.get("url"), (Integer) moduleJson.get("size")));
                 } else {
                     files.addAll(getFilesRecurse(repo, "/" + moduleJson.get("path")));
                 }
