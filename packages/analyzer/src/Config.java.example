@@ -1,0 +1,4 @@
+public class Config {
+    public static final String GITHUB_CLIENT_ID  = "xxxx";
+    public static final String GITHUB_CLIENT_SECRET = "xxxx";
+}
