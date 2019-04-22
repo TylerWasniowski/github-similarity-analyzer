@@ -81,7 +81,7 @@ const Home = () => {
         className="urls-list"
         hidden={!selected.users.length && !selected.repos.length}
       >
-        <List>
+        <List hidden={!selected.users.length}>
           {selected.users.map(user => (
             <ListItem
               key={user}
@@ -98,7 +98,7 @@ const Home = () => {
         ) : (
           <React.Fragment />
         )}
-        <List>
+        <List hidden={!selected.repos.length}>
           {selected.repos.map(repo => (
             <ListItem
               key={repo}
