@@ -1,4 +1,14 @@
 public class Config {
     public static final String GITHUB_CLIENT_ID  = "xxxx";
     public static final String GITHUB_CLIENT_SECRET = "xxxx";
+
+    // Splitter config
+    public static final int DEFAULT_NUM_THREADS_SPLITTER = 16;
+    public static final long DEFAULT_PART_SIZE_IN_BYTES = 1 << 10;
+
+    // Counter config
+    public static final int DEFAULT_COUNTER_THREADS = 16;
+
+    // Merge config
+    public static final int DEFAULT_MERGER_THREADS = 16;
 }

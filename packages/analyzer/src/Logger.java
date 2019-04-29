@@ -10,7 +10,7 @@ public class Logger {
         logWriter = new BufferedWriter(new FileWriter(fileName, true));
     }
 
-    public void log(String string) {
+    public synchronized void log(String string) {
         try {
             logWriter.write(new Timestamp(System.currentTimeMillis()) + ": " + string + "\n");
         } catch (IOException e) {
@@ -26,7 +26,7 @@ public class Logger {
         }
     }
 
-    public void close() {
+    public synchronized void close() {
         try {
             logWriter.close();
         } catch (IOException e) {

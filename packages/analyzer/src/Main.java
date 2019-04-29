@@ -1,15 +1,8 @@
-import javafx.util.Pair;
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class Main {
     private static Logger logger;
@@ -24,112 +17,190 @@ public class Main {
 
     public static void main(String[] args) {
         logger.log("Started with arguments: " + Arrays.toString(args));
-        if (args.length < 1) {
-            logger.log("No arguments provided. Exiting...");
-            logger.flushLog();
+        if (args.length != 1) {
+            printUsage();
+            logger.log("Wrong number of arguments");
             logger.close();
             return;
         }
 
-        StringBuilder job = new StringBuilder();
-        try (BufferedReader jobReader = new BufferedReader(new FileReader(args[0]))) {
-            jobReader.lines().forEach(job::append);
-        } catch (IOException e) {
-            e.printStackTrace();
-            logger.log(e.getMessage());
-            logger.flushLog();
-            logger.close();
-            return;
-        }
-        logger.log("Job file read: " + job.toString());
-        logger.flushLog();
-        JSONObject jobObject = new JSONObject(job.toString());
 
+        Splitter splitter = new Splitter(logger);
+        Counter counter = new Counter(logger);
+        Merger merger = new Merger(logger);
 
-        ExecutorService service = Executors.newFixedThreadPool(8);
-        Set<String> repos = new HashSet<>();
+        Set<String> results = new HashSet<>();
+        Set<String> unprocessedResults = ConcurrentHashMap.newKeySet();
+        splitter.makeParts(args[0], (partName) -> {
+            logger.log("Finished making part " + partName);
+            counter.countLines(partName, (resultName) -> {
+                unprocessedResults.add(resultName);
 
-        // Get repos from users
-        List<Future<List<String>>> repoFutures = new ArrayList<>();
-        JSONArray userObjects = (JSONArray) jobObject.get("users");
-        for (Object userObject : userObjects) {
-            String user = (String) userObject;
-            logger.log("User: " + user);
-            repoFutures.add(service.submit(() -> getRepos(user)));
-        }
-
-        JSONArray repoObjects = (JSONArray) jobObject.get("repos");
-        for (Object repoObject : repoObjects) {
-            repos.add((String) repoObject);
-        }
-
-        for (Future<List<String>> repoFuture : repoFutures) {
-            try {
-                repos.addAll(repoFuture.get());
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        }
-        service.shutdown();
-
-
-        // Get files from repos
-        Map<String, List<Pair<String, Integer>>> repoToFiles = new HashMap<>();
-        repos
-            .parallelStream()
-            .forEach((repo) -> repoToFiles.put(repo, getFiles(repo)));
-
-
-        logger.log("Repos: " + repos);
-        logger.log("Files: " + repoToFiles);
-        logger.flushLog();
-        logger.close();
+                handleMerge(merger, results, unprocessedResults, resultName, getOtherPart(results, resultName));
+            });
+        });
     }
 
-    private static List<String> getRepos(String user) {
-        List<String> repos = new ArrayList<>();
+    private static synchronized String getOtherPart(Set<String> results, String resultName) {
+        String otherResultName = null;
 
-        try {
-            String reposString = Helper.makeRequest("/users/" + user + "/repos?per_page=100");
-            JSONArray reposArray = new JSONArray(reposString);
-
-            for (Object repoObject : reposArray) {
-                repos.add((String) ((JSONObject) repoObject).get("full_name"));
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            logger.log(e.getMessage());
-            logger.flushLog();
+        if (results.isEmpty()) {
+            results.add(resultName);
+        } else {
+            otherResultName = results.iterator().next();
+            results.remove(otherResultName);
         }
 
-        return repos;
+        return otherResultName;
     }
 
-    private static List<Pair<String, Integer>> getFiles(String repo) {
-        return getFilesRecurse(repo, "");
+    private static void handleMerge(Merger merger, Set<String> results, Set<String> unprocessedResults,
+                                    String resultName, String otherResultName) {
+        if (otherResultName != null) {
+            merger.mergeResults(resultName, otherResultName, (mergeResultName) -> {
+                logger.log("Finished merging part " + mergeResultName);
+
+                unprocessedResults.remove(resultName);
+                unprocessedResults.remove(otherResultName);
+                handleMerge(merger, results, unprocessedResults, mergeResultName, getOtherPart(results, mergeResultName));
+            });
+        } else if (unprocessedResults.isEmpty() ||
+                (unprocessedResults.size() == 1 && unprocessedResults.iterator().next().equals(resultName))) {
+            writeScores(resultName);
+            writeMostDuplicated(resultName);
+        }
     }
 
-    private static List<Pair<String, Integer>> getFilesRecurse(String repo, String path) {
-        List<Pair<String, Integer>> files = new ArrayList<>();
+    private static void writeScores(String resultName) {
+        try (ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(resultName))) {
+            @SuppressWarnings("unchecked")
+            ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount =
+                    (ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>>) inputStream.readObject();
 
-        try {
-            String modulesString = Helper.makeRequest("/repos/" + repo + "/contents" + path);
+            List<Pair<String, Double>> similarityScores = repoToCount
+                    .keySet()
+                    .parallelStream()
+                    .map((repoName) -> {
+                        Map<String, Integer> lineToCount = repoToCount.get(repoName);
 
-            JSONArray filesArray = new JSONArray(modulesString);
-            for (Object moduleObject : filesArray) {
-                JSONObject moduleJson = (JSONObject) moduleObject;
-                if (moduleJson.get("type").equals("file")) {
-                    files.add(new Pair<>((String) moduleJson.get("url"), (Integer) moduleJson.get("size")));
-                } else {
-                    files.addAll(getFilesRecurse(repo, "/" + moduleJson.get("path")));
+                        AtomicInteger duplicated = new AtomicInteger(0);
+                        AtomicInteger total = new AtomicInteger(0);
+                        lineToCount
+                                .keySet()
+                                .parallelStream()
+                                .forEach((line) -> {
+                                    boolean[] lineDuplicated = new boolean[1];
+                                    lineDuplicated[0] = false;
+                                    if (lineToCount.get(line) > 1) lineDuplicated[0] = true;
+                                    else {
+                                        repoToCount
+                                                .keySet()
+                                                .parallelStream()
+                                                .filter((otherRepoName) -> !repoName.equals(otherRepoName))
+                                                .forEach((otherRepoName) -> {
+                                                    long n = repoToCount
+                                                            .get(otherRepoName)
+                                                            .keySet()
+                                                            .parallelStream()
+                                                            .filter(line::equals)
+                                                            .count();
+                                                    if (n > 0L) {
+                                                        synchronized (lineDuplicated) {
+                                                            lineDuplicated[0] = true;
+                                                        }
+                                                    }
+                                                });
+                                    }
+
+                                    if (lineDuplicated[0]) duplicated.incrementAndGet();
+                                    total.incrementAndGet();
+                                });
+
+                        logger.log("Duplicated: " + duplicated);
+                        logger.log("Total: " + total);
+
+
+                        double similarityScore = ((duplicated.intValue() * 1000) / (total.intValue())) / 10.0;
+
+                        return new Pair<>(repoName, similarityScore);
+                    })
+                    .collect(Collectors.toList());
+
+
+            String scoresName = resultName.replace(".result", "_scores.txt");
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(scoresName))) {
+                for (Pair<String, Double> repoToSimilarityScore : similarityScores) {
+                    writer.write(repoToSimilarityScore.getFirst() + ": " + repoToSimilarityScore.getSecond());
+                    writer.newLine();
                 }
+                writer.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+                logger.log("Error writing scores");
             }
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
-            logger.log(e.getMessage());
-            logger.flushLog();
+            logger.log("Error reading final results in lines writer");
         }
 
-        return files;
+        logger.log("Finished writing scores");
+    }
+
+    private static void writeMostDuplicated(String resultName) {
+        try (ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(resultName))) {
+            @SuppressWarnings("unchecked")
+            ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount =
+                    (ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>>) inputStream.readObject();
+
+            String linesName = resultName.replace(".result", "_lines.txt");
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(linesName))) {
+                repoToCount
+                        .keySet()
+                        .forEach((repoName) -> {
+                            try {
+                                writer.write("Repo: " + repoName);
+                                writer.newLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            ConcurrentHashMap<String, Integer> lineToCount = repoToCount.get(repoName);
+
+                            //noinspection SuspiciousMethodCalls
+                            lineToCount
+                                    .keySet()
+                                    .stream()
+                                    .sorted(Comparator.comparingInt(lineToCount::get).reversed())
+                                    .forEach((line) -> {
+                                        try {
+                                            writer.write(line + ": " + lineToCount.get(line));
+                                            writer.newLine();
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        }
+                                    });
+
+                            try {
+                                writer.newLine();
+                                writer.newLine();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        });
+
+                writer.flush();
+            } catch (IOException e) {
+                e.printStackTrace();
+                logger.log("Error writing lines");
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            logger.log("Error reading final results in lines writer");
+        }
+
+        logger.log("Finished writing lines");
+    }
+
+    private static void printUsage() {
+        System.out.println("Usage: <job_filepath> [show_scores (0 or 1] [show_lines");
     }
 }
