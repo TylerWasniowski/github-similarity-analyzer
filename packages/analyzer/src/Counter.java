@@ -53,7 +53,7 @@ public class Counter {
             partToSize.getFirst().get(repoName)
                     .parallelStream()
                     .forEach((fileToSize) -> workerService.submit(() -> {
-                        logger.log("Counting lines in " + fileToSize.getFirst());
+                        logger.log("Counting lines in " + repoName + "/" + fileToSize.getFirst());
                             try {
                                 String fileString = Helper.makeRequest("/repos/" +
                                         repoName + "/contents/" + fileToSize.getFirst()

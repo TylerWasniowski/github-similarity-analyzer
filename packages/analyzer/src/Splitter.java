@@ -90,10 +90,6 @@ public class Splitter {
                         logger.log("Failure to resolve files for some repo");
                     }
                 });
-
-
-        logger.log("Repos: " + repos);
-        logger.log("Files: " + repoToFiles);
         logger.flushLog();
 
 
@@ -114,7 +110,6 @@ public class Splitter {
                 partToSize.setSecond(partToSize.getSecond() + fileToSize.getSecond());
             }
         }
-
 
         // Serialize parts
         AtomicInteger partNumber = new AtomicInteger(0);
@@ -137,6 +132,7 @@ public class Splitter {
                             }
 
                             logger.log("Finished writing part " + partName + " to file");
+                            logger.log("Part " + partName + ": " + partToSize);
                             processPart.accept(partName);
                         })
                 ).forEach((future) -> {

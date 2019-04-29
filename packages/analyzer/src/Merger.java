@@ -34,10 +34,14 @@ public class Merger {
             //noinspection unchecked
             ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount1 = (ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>>) inputStream1.readObject();
 
+            logger.log("Repo1: " + repoToCount1.get("verawong789/hello-world"));
+
             try (ObjectInputStream inputStream2 = new ObjectInputStream(new FileInputStream(resultName2))) {
                 @SuppressWarnings("unchecked")
                 ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount2 =
                         (ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>>) inputStream2.readObject();
+                logger.log("Repo2: " + repoToCount2.get("verawong789/hello-world"));
+
 
                 ExecutorService executor = Executors.newFixedThreadPool(threads);
                 repoToCount2
@@ -46,13 +50,12 @@ public class Merger {
                         .forEach((repoName2) -> {
                             repoToCount1.computeIfAbsent(repoName2, (repoName) -> new ConcurrentHashMap<>());
 
+                            ConcurrentHashMap<String, Integer> lineToCount1 = repoToCount1.get(repoName2);
                             ConcurrentHashMap<String, Integer> lineToCount2 = repoToCount2.get(repoName2);
                             lineToCount2
                                     .keySet()
                                     .parallelStream()
                                     .map((line2) -> executor.submit(() -> {
-                                        ConcurrentHashMap<String, Integer> lineToCount1 = repoToCount1.get(repoName2);
-
                                         lineToCount1.putIfAbsent(line2, 0);
                                         lineToCount1.computeIfPresent(line2,
                                                 (line, count1) -> lineToCount2.get(line2) + count1
@@ -89,7 +92,7 @@ public class Merger {
             logger.log("Error writing result " + resultName1 + " in Merger");
         }
 
-        logger.log("Finished merging results " + resultName1 + " " + resultName2);
+        logger.log("Finished merging results " + resultName1 + " and " + resultName2);
         processResult.accept(resultName1);
     }
 
