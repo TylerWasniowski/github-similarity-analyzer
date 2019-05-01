@@ -29,18 +29,17 @@ public class Merger {
     }
 
     public void mergeResults(String resultName1, String resultName2, Consumer<String> processResult) {
+        logger.log("Starting merging " + resultName1 + " and " + resultName2);
+
         ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount = null;
         try (ObjectInputStream inputStream1 = new ObjectInputStream(new FileInputStream(resultName1))) {
             //noinspection unchecked
             ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount1 = (ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>>) inputStream1.readObject();
 
-            logger.log("Repo1: " + repoToCount1.get("verawong789/hello-world"));
-
             try (ObjectInputStream inputStream2 = new ObjectInputStream(new FileInputStream(resultName2))) {
                 @SuppressWarnings("unchecked")
                 ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount2 =
                         (ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>>) inputStream2.readObject();
-                logger.log("Repo2: " + repoToCount2.get("verawong789/hello-world"));
 
 
                 ExecutorService executor = Executors.newFixedThreadPool(threads);

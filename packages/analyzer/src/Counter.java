@@ -13,14 +13,10 @@ public class Counter {
     private Logger logger;
     private int threads;
 
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount;
-
 
     public Counter(Logger logger) {
         this.logger = logger;
         this.threads = Config.DEFAULT_COUNTER_THREADS;
-
-        this.repoToCount = new ConcurrentHashMap<>();
     }
 
     public Counter(Logger logger, int threads) {
@@ -46,6 +42,7 @@ public class Counter {
             return;
         }
 
+        ConcurrentHashMap<String, ConcurrentHashMap<String, Integer>> repoToCount = new ConcurrentHashMap<>();
         ExecutorService workerService = Executors.newFixedThreadPool(threads);
         for (String repoName : partToSize.getFirst().keySet()) {
             ConcurrentHashMap<String, Integer> lineToCount = new ConcurrentHashMap<>();
