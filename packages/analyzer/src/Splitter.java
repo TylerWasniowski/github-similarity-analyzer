@@ -18,15 +18,14 @@ public class Splitter {
         this.threads = Config.DEFAULT_SPLITTER_THREADS;
     }
 
-    public Splitter(Logger logger, long partSizeInBytes) {
+    public Splitter(Logger logger, int threads) {
         this(logger);
-        this.partSizeInBytes = partSizeInBytes;
-        this.threads = Config.DEFAULT_SPLITTER_THREADS;
+        this.threads = threads;
     }
 
-    public Splitter(Logger logger, long partSizeInBytes, int threads) {
-        this(logger, partSizeInBytes);
-        this.threads = threads;
+    public Splitter(Logger logger, int threads, long partSizeInBytes) {
+        this(logger, threads);
+        this.partSizeInBytes = partSizeInBytes;
     }
 
     public void makeParts(String jobName) {
@@ -198,13 +197,9 @@ public class Splitter {
         return files;
     }
 
-    private static void printUsage() {
-        System.out.println("Usage: <job_filepath> [part_size_in_bytes] [threads]");
-    }
 
     public static void main(String[] args) {
-        // TODO: Finish this
-        Logger logger = null;
+        Logger logger;
         try {
             logger = new Logger("splitter_log.txt");
         } catch (IOException e) {
@@ -212,10 +207,24 @@ public class Splitter {
             return;
         }
 
-        long partSizeInBytes = Config.DEFAULT_PART_SIZE_IN_BYTES;
-        if (args.length == 2) {
+        int threads = Config.DEFAULT_SPLITTER_THREADS;
+        //noinspection Duplicates
+        if (args.length >= 2) {
             try {
-                partSizeInBytes = Long.parseLong(args[1]);
+                threads = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                printUsage();
+                logger.log("Error parsing threads");
+                logger.close();
+                return;
+            }
+        }
+
+        long partSizeInBytes = Config.DEFAULT_PART_SIZE_IN_BYTES;
+        if (args.length == 3) {
+            try {
+                partSizeInBytes = Long.parseLong(args[2]);
             } catch (NumberFormatException e) {
                 e.printStackTrace();
                 printUsage();
@@ -224,5 +233,12 @@ public class Splitter {
                 return;
             }
         }
+
+        Splitter splitter = new Splitter(logger, threads, partSizeInBytes);
+        splitter.makeParts(args[0]);
+    }
+
+    private static void printUsage() {
+        System.out.println("Usage: <job_filepath> [threads] [part_size_in_bytes]");
     }
 }

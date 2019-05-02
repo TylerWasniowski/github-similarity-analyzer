@@ -1,6 +1,8 @@
 import sun.rmi.runtime.Log;
 
 import java.io.*;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
@@ -16,10 +18,6 @@ public class Merger {
     public Merger(Logger logger, int threads) {
         this(logger);
         this.threads = threads;
-    }
-
-    public static void main(String[] args) {
-
     }
 
     public void mergeResults(String resultName1, String resultName2) {
@@ -93,6 +91,48 @@ public class Merger {
 
         logger.log("Finished merging results " + resultName1 + " and " + resultName2);
         processResult.accept(resultName1);
+    }
+
+    public static void main(String[] args) {
+        Logger logger;
+        try {
+            logger = new Logger("splitter_log.txt");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        int threads = Config.DEFAULT_MERGER_THREADS;
+        //noinspection Duplicates
+        if (args.length >= 2)
+        {
+            try {
+                threads = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                printUsage();
+                logger.log("Error parsing threads");
+                logger.close();
+                return;
+            }
+        }
+
+        Merger merger = new Merger(logger, threads);
+        File folder = new File(args[0]);
+        logger.log("Finished merging results into: " +
+                Arrays.stream(Objects.requireNonNull(folder.listFiles()))
+                .filter(file -> file.isFile() && file.getName().endsWith(".result"))
+                .reduce((result1, result2) -> {
+                    merger.mergeResults(result1.getName(), result2.getName());
+                    return result1;
+                })
+                .get()
+                .getName()
+        );
+    }
+
+    private static void printUsage() {
+        System.out.println("Usage: <directory_with_parts> [threads]");
     }
 
 }

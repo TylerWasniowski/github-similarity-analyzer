@@ -38,7 +38,7 @@ This will split the job into parts.
 
 ```bash
 cd "analyzer/compiled"
-java -cp ".;..\src\json-20180813.jar;" Splitter <job_filepath> [part_size_in_bytes]
+java -cp ".;..\src\json-20180813.jar;" Splitter <job_filepath> [threads] [part_size_in_bytes]
 ```
 
 ## Run Counter Only
@@ -56,5 +56,5 @@ This will merge each part in a given directory.
 
 ```bash
 cd "analyzer/compiled"
-java Merger <directory_with_parts> [threads]
+java Merger <directory_with_results> [threads]
 ```
