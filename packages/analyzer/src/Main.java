@@ -17,7 +17,7 @@ public class Main {
 
     public static void main(String[] args) {
         logger.log("Started with arguments: " + Arrays.toString(args));
-        if (args.length != 1) {
+        if (args.length != 1) { 
             printUsage();
             logger.log("Wrong number of arguments");
             logger.close();
